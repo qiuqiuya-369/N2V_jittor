@@ -16,20 +16,33 @@ Noise2Void - Learning Denoising From Single Noisy Images
 
 ## 二、项目结构说明
 ```
-Jittor 项目结构                                   |  PyTorch 项目结构
------------------------------------------        |-----------------------------------------
-Noise2Void-pytorch-master/                       | Noise2Void-jittor-master/               
-├─ data/                # 含噪图像、处理对比图     | ├─ data/                # 含噪图像、处理对比图
-├─ datasets/            # 数据集                  | ├─ datasets/            # 数据集               
-├─ weights/             # 模型权重文件和训练日志   | ├─ weights/             # 模型权重文件和训练日志
-├─ dataset.py           # 数据集准备脚本          | ├─ dataset.py           # 数据集准备脚本        
-├─ draw.py              # 绘图功能脚本            | ├─ draw.py              # 绘图功能脚本          
-├─ model.py             # U-Net模型定义           | ├─ model.py             # U-Net模型定义         
-├─ split_dataset.py     # 数据集划分脚本          | ├─ split_dataset.py     # 数据集划分脚本        
-├─ test.py              # 测试脚本                | ├─ test.py              # 测试脚本              
-├─ train.py             # 训练脚本                | ├─ train.py             # 训练脚本              
-├─ utils.py             # 工具脚本                | ├─ utils.py             # 工具脚本              
-└─ DiffusionModels/     # 扩散模型相关（若有）     | （若需要对齐可补充 DiffusionModels/ ，按左边逻辑）          
+Pytorch 项目结构                                  
+-----------------------------------------       
+Noise2Void-pytorch-master/                       
+├─ data/                # 含噪图像、处理对比图     
+├─ datasets/            # 数据集                 
+├─ weights/             # 模型权重文件和训练日志   
+├─ dataset.py           # 数据集准备脚本         
+├─ draw.py              # 绘图功能脚本             
+├─ model.py             # U-Net模型定义           
+├─ split_dataset.py     # 数据集划分脚本         
+├─ test.py              # 测试脚本               
+├─ train.py             # 训练脚本                
+└─utils.py              # 工具脚本               
+
+Jittor 项目结构                                  
+-----------------------------------------       
+Noise2Void-jittor-master/                       
+├─ data/                # 含噪图像、处理对比图     
+├─ datasets/            # 数据集                 
+├─ weights/             # 模型权重文件和训练日志   
+├─ dataset.py           # 数据集准备脚本         
+├─ draw.py              # 绘图功能脚本             
+├─ model.py             # U-Net模型定义           
+├─ split_dataset.py     # 数据集划分脚本         
+├─ test.py              # 测试脚本               
+├─ train.py             # 训练脚本                
+└─ utils.py             # 工具脚本               
 
 
 ```
@@ -131,9 +144,9 @@ python train.py --arch "N2V_Unet" \
 ```
 
 训练过程说明:
-- 训练时会自动在训练集图像上添加指定水平的高斯噪声，并使用 Noise2Void 策略（掩盖中心像素）进行自监督训练。
-- 每轮训练后会在验证集上计算 PSNR 和 SSIM 指标，并保存当前最优模型。
-- 训练日志（损失、PSNR、SSIM、时间）会保存为 CSV 文件（在wights文件夹中）。
+- 训练时会自动在训练集图像上添加指定水平的高斯噪声，并使用 Noise2Void 策略（掩盖中心像素）进行自监督训练
+- 每轮训练后会在验证集上计算 PSNR 和 SSIM 指标，并保存当前最优模型
+- 训练日志（损失、PSNR、SSIM、时间）会保存为 CSV 文件（在wights文件夹中）
 
 ##  六、模型测试（test.py）
 
@@ -158,9 +171,9 @@ python test.py --arch N2V_Unet \
 ```
 
 测试结果说明:
-- 去噪后的图像保存在outputs_denoising_dir中。
-- 可视化对比图（原图、带噪图、去噪图）保存在outputs_plt_dir中，包含 PSNR 和 SSIM 指标。
-- 所有测试图像的 PSNR 和 SSIM 会汇总为 CSV 文件（在data文件夹中），包含单张图像指标和平均值。
+- 去噪后的图像保存在outputs_denoising_dir中
+- 可视化对比图（原图、带噪图、去噪图）保存在outputs_plt_dir中，包含 PSNR 和 SSIM 指标
+- 所有测试图像的 PSNR 和 SSIM 会汇总为 CSV 文件（在data文件夹中），包含单张图像指标和平均值
 
 ##  七、对齐验证
 
@@ -173,14 +186,14 @@ python test.py --arch N2V_Unet \
 <img src="./picture/N2V_UNet_cumulative_time(s)_comparison.png" width = "500" height = "400" alt="图片名称" align=center />
 
 
-- Jittor 训练更稳定，累计耗时线性增长、无明显波动，训练过程中计算效率稳定。
-- PyTorch 存在性能波动，有阶梯式耗时突增，容易受环境影响。
+- Jittor 训练更稳定，累计耗时线性增长、无明显波动，训练过程中计算效率稳定
+- PyTorch 存在性能波动，有阶梯式耗时突增，容易受环境影响
 
 ### loss 对比分析
 
 训练过程两个框架 loss 对比分析如下图所示：
 
-<img src="./picture/N2V_UNet_loss_comparison.png" width = "500" height = "400" alt="图片名称" align=center />
+<img src="./picture/N2V_UNet_loss_comparison.png" width = "500" height = "400"  align=center />
 
 
 - 两种框架损失均快速下降并趋于稳定
@@ -191,7 +204,7 @@ python test.py --arch N2V_Unet \
 验证集上两个框架 PSNR 和 SSIM 对比分析如下图所示：
 
 
-<img src="./picture/N2V_UNet_psnr_comparison.png" width = "500" height = "400" alt="图片名称" align=center />      <img src="./picture/N2V_UNet_ssim_comparison.png" width = "500" height = "400" alt="图片名称" align=center />
+<img src="./picture/N2V_UNet_psnr_comparison.png" width = "500" height = "400"  align=center />      <img src="./picture/N2V_UNet_ssim_comparison.png" width = "500" height = "400"  align=center />
 
 
 - Jittor 收敛速度显著更快，在训练前期的梯度更新、计算效率上更具优势
@@ -199,7 +212,7 @@ python test.py --arch N2V_Unet \
 
 ### 实验结果对比分析
 
-
+<img src="./picture/data_compare.png" width = "400" height = "300"  align=center />
 
 
 ### 可视化结果对比分析
