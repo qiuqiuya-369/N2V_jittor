@@ -15,14 +15,11 @@ parser.add_argument('--gaussian_noise_level', type=str, default='25')
 opt = parser.parse_args()
 
 if opt.gaussian_noise_level is not None:
-    # 保持原有处理逻辑不变
     opt.gaussian_noise_level = list(map(lambda x: int(x), opt.gaussian_noise_level.split(',')))
 
-# 读取 CSV 文件
 csv_file_path = opt.csv_dir +'_srf_' + str(opt.gaussian_noise_level) + '_' + str(opt.arch) + '_train_result.csv'
 data_frame = pd.read_csv(csv_file_path, index_col='Epoch')
 
-# 三个指标画到一个图里
 fig, axs = plt.subplots(1, 3, figsize=(12, 4))
 
 # 绘制 Loss 曲线
@@ -64,40 +61,11 @@ plt.ylabel('Time(s)')
 plt.legend(loc='upper right')
 plt.grid(ls='--')
 
-# 设置x轴刻度间隔为10
 ax = plt.gca()
 ax.xaxis.set_major_locator(MultipleLocator(10))
 
-# 保存Time(s)独立图片
 time_save_path = opt.out_dir + 'time_plt_{}_{}'.format(opt.gaussian_noise_level, opt.arch)
 plt.tight_layout()
 plt.savefig(time_save_path, bbox_inches='tight', dpi=600)
 
 plt.show()
-
-
-
-
-# 保留单画PSNR的代码（注释状态，保持不变）
-"""
-plt.figure()
-plt.rcParams['xtick.direction'] = 'in'  # 将x轴的刻度线方向设置向内
-plt.rcParams['ytick.direction'] = 'in'  # 将y轴的刻度方向设置向内
-plt.plot(data_frame.index, data_frame['PSNR'], label='DnCNN', color='green')
-
-plt.xlabel('Epochs')
-plt.ylabel('Average PSNR(dB)')
-plt.legend(loc='lower right')
-plt.grid(ls='-')
-
-ax = plt.gca()
-x_major_locator = MultipleLocator(5)
-ax.xaxis.set_major_locator(x_major_locator)
-
-y_major_locator = MultipleLocator(0.2)
-ax.yaxis.set_major_locator(y_major_locator)
-
-plt.savefig(opt.out_dir + 'PSNR_plt_{}_{}'.format(opt.gaussian_noise_level, opt.arch), 
-            bbox_inches='tight', dpi=600)
-# plt.show()
-"""
