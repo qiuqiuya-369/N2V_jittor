@@ -5,6 +5,9 @@ Noise2Void - Learning Denoising From Single Noisy Images
 
 原文链接：https://arxiv.org/abs/1811.10980
 
+##  论文简介
+
+N2V 作为一种经典的自监督去噪方法，既不需要噪声图像对，也不需要干净的目标图像。一张噪声图片就能训练，直接在噪声数据上去噪。假设噪声图像由信号和噪声构成，噪声像素相互独立且均值为零，信号像素不相互独立。基于这些假设，网络通过学习一个点周围所有点到该点的映射，避免了恒等映射，具有很强的实用性。
 
 ##  一、项目简介
 本项目基于 Jittor 框架复现自监督图像去噪模型 N2V ，由于原论文仅提供了[TensorFlow代码](https://github.com/juglab/n2v)，这里提供了 Pytorch 代码以及转换为 Jittor 框架的代码。包括：
@@ -204,7 +207,9 @@ python test.py --arch N2V_Unet \
 验证集上两个框架 PSNR 和 SSIM 对比分析如下图所示：
 
 
-<img src="./picture/N2V_UNet_psnr_comparison.png" width = "500" height = "400"  align=center />      <img src="./picture/N2V_UNet_ssim_comparison.png" width = "500" height = "400"  align=center />
+<img src="./picture/N2V_UNet_psnr_comparison.png" width = "500" height = "400"  align=center />      
+
+<img src="./picture/N2V_UNet_ssim_comparison.png" width = "500" height = "400"  align=center />
 
 
 - Jittor 收敛速度显著更快，在训练前期的梯度更新、计算效率上更具优势
