@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from skimage.metrics import structural_similarity as compare_ssim
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
-# import cv2
 from utils import calc_psnr, calculate_ssim
 
 jt.flags.use_cuda = 1
@@ -26,9 +25,9 @@ if __name__ == '__main__':
     parser.add_argument('--outputs_denoising_dir', type=str, default='autodl-tmp/Noise2Void-jittor-master/Noise2Void-jittor-master/data/BSD68_denoising_50_N2V_Unet')    # 去噪结果保存文件夹
     parser.add_argument('--outputs_plt_dir', type=str, default='autodl-tmp/Noise2Void-jittor-master/Noise2Void-jittor-master/data/BSD68_denoising_50_plt_N2V_Unet')  # 去噪结果可视化保存文件夹
     parser.add_argument('--gaussian_noise_level', type=str, default='50')   # 高斯噪声强度
-    parser.add_argument('--jpeg_quality', type=int)
-    parser.add_argument('--downsampling_factor', type=int)
-    opt = parser.parse_args()
+    parser.add_argument('--jpeg_quality', type=int) # JPEG压缩质量
+    parser.add_argument('--downsampling_factor', type=int) # 下采样因子
+    opt = parser.parse_args() # 解析参数并保存到opt对象
 
     if not os.path.exists(opt.outputs_denoising_dir):
         os.makedirs(opt.outputs_denoising_dir)
@@ -36,9 +35,7 @@ if __name__ == '__main__':
     if not os.path.exists(opt.outputs_plt_dir):
         os.makedirs(opt.outputs_plt_dir)
 
-    # 创建CSV文件路径
     csv_path = os.path.join('autodl-tmp/Noise2Void-jittor-master/Noise2Void-jittor-master', 'denoising_metrics_50.csv')
-    # 确保目录存在
     os.makedirs(os.path.dirname(csv_path), exist_ok=True)
 
     if opt.arch == 'N2V_Unet':
@@ -47,7 +44,7 @@ if __name__ == '__main__':
         else:
             model = Unet(3,3)
 
-    # 读取最优模型
+    # 加载预训练权重
     state_dict = model.state_dict()
     for n, p in jt.load(opt.weights_path).items():
         if n in state_dict.keys():
@@ -55,8 +52,7 @@ if __name__ == '__main__':
         else:
             raise KeyError(n)
 
-    # 读取某个epoch模型
-    # model = torch.load(opt.weights_path)["model"]
+    # 将加载的参数应用到模型
     model.load_state_dict(state_dict)
     model.eval()
 
@@ -74,6 +70,7 @@ if __name__ == '__main__':
     sum_psnr = 0.0
     sum_ssim = 0.0
     results_data = []
+
     for i in range(benchmark_len):
         filename = os.path.basename(image_list[i]).split('.')[0]
         descriptions = ''
@@ -83,31 +80,18 @@ if __name__ == '__main__':
             input = pil_image.open(image_list[i]).convert('L')
         else:
             input = pil_image.open(image_list[i]).convert('RGB')
+        # 保存原图作为Ground Truth
         GT = input
         GT_cal = np.array(input).astype(np.float32) / 255.0
-
-        # img = cv2.imread(image_list[i])
-        # # img = img[:, :, ::-1] / 255.0
-        # # img = np.transpose(img, axes=[2, 0, 1]).astype('float32')
-        # # input = np.array(img).astype('float32')
-        # input = img
-        # GT_cal = input / 255.0
-
+        # 启用高斯噪声
         if opt.gaussian_noise_level is not None:
             if opt.is_gray:
-                # 加对应噪声水平的噪声
                 noise = np.random.normal(0.0, sigma, (input.height, input.width)).astype(np.float32)
-                # noise = np.random.normal(0.0, sigma, (input.shape[0], input.shape[1], 3)).astype(np.float32)
                 input = np.array(input).astype(np.float32) + noise
                 input = np.expand_dims(input, axis=-1)
             else:
-            # 加对应噪声水平的噪声
                 noise = np.random.normal(0.0, sigma, (input.height, input.width, 3)).astype(np.float32)
-                # noise = np.random.normal(0.0, sigma, (input.shape[0], input.shape[1], 3)).astype(np.float32)
                 input = np.array(input).astype(np.float32) + noise
-
-            # # 图像本来就有噪声，不加噪
-            # input = np.array(input).astype(np.float32)
 
             input /= 255.0
             noisy_input = input
@@ -135,10 +119,13 @@ if __name__ == '__main__':
             input /= 255.0
             noisy_input = input
 
+        # 图像格式转换
         input= jt.array(input).transpose(2, 0, 1).unsqueeze(0)
+        # 关闭梯度计算，模型输出去噪结果
         with jt.no_grad():
             pred = model(input)
 
+        # 处理去噪结果
         if opt.is_gray:
             output = pred.mul_(255.0).clamp_(0.0, 255.0).squeeze(0).squeeze(0).astype(jt.uint8).numpy()
             denoising_output = output / 255.0
@@ -149,9 +136,6 @@ if __name__ == '__main__':
             output = pil_image.fromarray(output, mode='RGB')
         output.save(os.path.join(opt.outputs_denoising_dir, '{}_{}_{}.png'.format(filename, descriptions, opt.arch)))
 
-        # psnr = compare_psnr(GT_cal, denoising_output, data_range=GT_cal.max() - GT_cal.min())
-        # ssim = compare_ssim(GT_cal, denoising_output, channel_axis=2, data_range=GT_cal.max() - GT_cal.min())
-
         psnr = calc_psnr(GT_cal, denoising_output)
         ssim = calculate_ssim(GT_cal * 255, denoising_output * 255)
         sum_psnr += psnr
@@ -160,13 +144,13 @@ if __name__ == '__main__':
             -1] == 1 else noisy_input
         noisy_psnr = calc_psnr(GT_cal, noisy_input_squeezed)
 
-         # 新增：将当前图片结果添加到列表
         results_data.append({
             'filename': filename,
             'psnr': round(psnr, 4),
             'ssim': round(ssim, 6)
         })
         print(f"  PSNR: {psnr:.4f} dB, SSIM: {ssim:.6f}")
+
         # 对比图
         fig, axes = plt.subplots(1, 3)
         # 关闭坐标轴
@@ -191,21 +175,21 @@ if __name__ == '__main__':
             os.path.join(opt.outputs_plt_dir, '{}_plt_x{}_{}.png'.format(filename, opt.gaussian_noise_level, opt.arch)),
             bbox_inches='tight', dpi=600)
         plt.close()
+
     # 计算平均指标
     avg_psnr = sum_psnr / benchmark_len
     avg_ssim = sum_ssim / benchmark_len
     print('PSNR: {:.2f}'.format(avg_psnr))
     print('SSIM: {:.4f}'.format(avg_ssim))
     
-    # 新增：添加平均值到结果列表（用空行分隔区分）
+    # 添加平均值到结果列表
     results_data.append({
         'filename': 'Average',
         'psnr': round(avg_psnr, 4),
         'ssim': round(avg_ssim, 6)
     })
 
-    # 新增：将结果转换为DataFrame并保存为CSV
+    # 将结果转换为DataFrame并保存为CSV
     df = pd.DataFrame(results_data)
     df.to_csv(csv_path, index=False, encoding='utf-8')
     print(f"评估结果已保存至CSV文件: {csv_path}")
-
