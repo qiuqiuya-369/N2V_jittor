@@ -1,6 +1,6 @@
 import argparse
 import os
-import time  # 导入时间模块
+import time
 import jittor as jt
 from jittor import nn
 from jittor.optim import Adam
@@ -13,30 +13,9 @@ import numpy as np
 import pandas as pd
 from skimage.metrics import structural_similarity as compare_ssim
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
+from utils import AverageMeter, adjust_lr 
 
 jt.flags.use_cuda = 1
-
-class AverageMeter:
-    def __init__(self):
-        self.reset()
-        
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-        
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-
-def adjust_lr(optimizer, base_lr, epoch, lr_decay_steps, lr_decay_gamma):
-    lr = base_lr * (lr_decay_gamma ** (epoch // lr_decay_steps))
-    for param_group in optimizer.param_groups:
-        param_group["lr"] = lr
-    return lr
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -99,16 +78,16 @@ if __name__ == '__main__':
     best_weights = copy.deepcopy(model.state_dict())
     best_epoch = 0
     best_psnr = 0.0
-    # 在结果字典中添加运行时间记录
     results = {'loss': [], 'psnr': [], 'ssim': [], 'time': []}
     
     for epoch in range(opt.start_epoch, opt.num_epochs):
-        # 记录epoch开始时间
         epoch_start_time = time.time()
         
+        # 使用utils中的adjust_lr函数调整学习率
         lr = adjust_lr(optimizer, opt.lr, epoch, opt.lr_decay_steps, opt.lr_decay_gamma)
         
         model.train()
+        # 使用utils中的AverageMeter类记录损失
         epoch_losses = AverageMeter()
         
         with tqdm(total=len(dataloader), desc=f'epoch {epoch+1}/{opt.num_epochs}') as pbar:
@@ -132,6 +111,7 @@ if __name__ == '__main__':
                       f'{opt.arch}_epoch_{epoch}_{opt.gaussian_noise_level}.pth'))
         
         model.eval()
+        # 使用utils中的AverageMeter类记录PSNR
         epoch_psnr = AverageMeter()
         ssim_total = 0.0
         count = 0
@@ -164,19 +144,18 @@ if __name__ == '__main__':
             best_psnr = epoch_psnr.avg
             best_weights = copy.deepcopy(model.state_dict())
         
-        # 计算并记录当前epoch的运行时间（秒）
         epoch_time = time.time() - epoch_start_time
         results['loss'].append(epoch_losses.avg)
         results['psnr'].append(epoch_psnr.avg)
         results['ssim'].append(avg_ssim)
-        results['time'].append(epoch_time)  # 保存当前epoch的运行时间
+        results['time'].append(epoch_time)
         
         if (epoch + 1) % opt.epoch_save_num == 0 and epoch != 0:
             df = pd.DataFrame({
                 'Loss': results['loss'],
                 'PSNR': results['psnr'],
                 'SSIM': results['ssim'],
-                'Time (s)': results['time']  # 添加时间列到DataFrame
+                'Time (s)': results['time']
             }, index=range(opt.start_epoch, epoch+1))
             csv_name = f'{opt.outputs_dir}/results_srf_{opt.gaussian_noise_level}_{opt.arch}.csv'
             df.to_csv(csv_name, index_label='Epoch')
