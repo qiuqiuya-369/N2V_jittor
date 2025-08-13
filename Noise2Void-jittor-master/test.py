@@ -25,8 +25,6 @@ if __name__ == '__main__':
     parser.add_argument('--outputs_denoising_dir', type=str, default='autodl-tmp/Noise2Void-jittor-master/Noise2Void-jittor-master/data/BSD68_denoising_50_N2V_Unet')    # 去噪结果保存文件夹
     parser.add_argument('--outputs_plt_dir', type=str, default='autodl-tmp/Noise2Void-jittor-master/Noise2Void-jittor-master/data/BSD68_denoising_50_plt_N2V_Unet')  # 去噪结果可视化保存文件夹
     parser.add_argument('--gaussian_noise_level', type=str, default='50')   # 高斯噪声强度
-    parser.add_argument('--jpeg_quality', type=int) # JPEG压缩质量
-    parser.add_argument('--downsampling_factor', type=int) # 下采样因子
     opt = parser.parse_args() # 解析参数并保存到opt对象
 
     if not os.path.exists(opt.outputs_denoising_dir):
@@ -93,29 +91,6 @@ if __name__ == '__main__':
                 noise = np.random.normal(0.0, sigma, (input.height, input.width, 3)).astype(np.float32)
                 input = np.array(input).astype(np.float32) + noise
 
-            input /= 255.0
-            noisy_input = input
-
-        if opt.jpeg_quality is not None:
-            buffer = io.BytesIO()
-            input.save(buffer, format='jpeg', quality=opt.jpeg_quality)
-            input = pil_image.open(buffer)
-            descriptions += '_jpeg_q{}'.format(opt.jpeg_quality)
-            input.save(os.path.join(opt.outputs_denoising_dir, '{}{}.png'.format(filename, descriptions)))
-            input = np.array(input).astype(np.float32)
-            input /= 255.0
-            noisy_input = input
-
-        if opt.downsampling_factor is not None:
-            original_width = input.width
-            original_height = input.height
-            input = input.resize((input.width // opt.downsampling_factor,
-                                  input.height // opt.downsampling_factor),
-                                 resample=pil_image.BICUBIC)
-            input = input.resize((original_width, original_height), resample=pil_image.BICUBIC)
-            descriptions += '_sr_s{}'.format(opt.downsampling_factor)
-            input.save(os.path.join(opt.outputs_denoising_dir, '{}{}.png'.format(filename, descriptions)))
-            input = np.array(input).astype(np.float32)
             input /= 255.0
             noisy_input = input
 
