@@ -1,58 +1,16 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
 import random
 import glob
 import io
 import numpy as np
 import PIL.Image as pil_image
 import copy
-import jittor as jt  # 替换torch为jittor
-from jittor.dataset import Dataset as JittorDataset  # Jittor数据集基类
+import jittor as jt  
+from jittor.dataset import Dataset as JittorDataset 
 
-jt.flags.use_cuda = 1  # 启用CUDA
+jt.flags.use_cuda = 1 
 
-def data_aug(img, mode=0):
-    # data augmentation (实现保持不变)
-    if mode == 0:
-        return img
-    elif mode == 1:
-        return np.flipud(img)
-    elif mode == 2:
-        return np.rot90(img)
-    elif mode == 3:
-        return np.flipud(np.rot90(img))
-    elif mode == 4:
-        return np.rot90(img, k=2)
-    elif mode == 5:
-        return np.flipud(np.rot90(img, k=2))
-    elif mode == 6:
-        return np.rot90(img, k=3)
-    elif mode == 7:
-        return np.flipud(np.rot90(img, k=3))
-
-def gen_patch(datasets_path, patch_size, stride):
-    # 实现保持不变
-    file_list = sorted(glob.glob(datasets_path + '/*'))
-    data = []
-    patches = []
-
-    for i in range(len(file_list)):
-        clean_image = pil_image.open(file_list[i]).convert('RGB')
-        for j in range(0, clean_image.width - patch_size + 1, stride):
-            for k in range(0, clean_image.height - patch_size + 1, stride):
-                x = clean_image.crop((j, k, j + patch_size, k + patch_size))
-                patches.append(x)
-                for m in range(0, 1):
-                    x_aug = data_aug(x, mode=np.random.randint(0, 8))
-                    patches.append(x_aug)
-
-    for patch in patches:
-        data.append(patch)
-
-    return data
-
-class Dataset(JittorDataset):  # 继承JittorDataset
+class Dataset(JittorDataset):  
     def __init__(self, images_dir, patch_size, gaussian_noise_level, 
                  downsampling_factor, jpeg_quality, is_gray=True, 
                  batch_size=1, shuffle=False, num_workers=0):
@@ -60,16 +18,13 @@ class Dataset(JittorDataset):  # 继承JittorDataset
         self.image_files = sorted(glob.glob(images_dir + '/*'))
         self.patch_size = patch_size
         self.gaussian_noise_level = gaussian_noise_level
-        self.downsampling_factor = downsampling_factor
-        self.jpeg_quality = jpeg_quality
         self.is_gray = is_gray
-        
-        # 设置数据集长度 (20倍图像数量)
         self.total_len = len(self.image_files) * 20
 
     def __len__(self):
         return self.total_len
 
+    # 数据增强操作
     @staticmethod
     def random_horizontal_flip(lr, hr):
         if random.random() < 0.5:
@@ -92,6 +47,7 @@ class Dataset(JittorDataset):  # 继承JittorDataset
         return lr, hr
 
     def center_pixel_mask(self, img):
+        # 掩码中心像素：将图像中心像素替换为随机位置像素
         h, w, _ = img.shape
         center_pixel_h = h // 2
         center_pixel_w = w // 2
@@ -104,6 +60,7 @@ class Dataset(JittorDataset):  # 继承JittorDataset
 
         target = copy.deepcopy(img)
         source = copy.deepcopy(img)
+        # 替换中心图像
         source[center_pixel_h, center_pixel_w, :] = img[random_pixel_h, random_pixel_w, :]
         return source, target, [center_pixel_h, center_pixel_w]
 
@@ -143,11 +100,12 @@ class Dataset(JittorDataset):  # 继承JittorDataset
         else:
             source, target, blind_pos = self.center_pixel_mask(noisy_image1)
 
+        # 应用随机数据增强
         source, target = self.random_horizontal_flip(source, target)
         source, target = self.random_vertical_flip(source, target)
         source, target = self.random_rotate_90(source, target)
 
-        # 通道调整和归一化
+        # 通道调整和归一化（从HWC转为CHW）
         if self.is_gray:
             input = np.transpose(source, axes=[2, 0, 1])
             label = np.transpose(target, axes=[2, 0, 1])
@@ -165,16 +123,15 @@ class Dataset(JittorDataset):  # 继承JittorDataset
 
         return input, label, blind_pos
 
-class EvalDataset(JittorDataset):  # 继承JittorDataset
+class EvalDataset(JittorDataset): 
     def __init__(self, clean_image_dir, gaussian_noise_level, 
                  downsampling_factor, jpeg_quality, is_gray=False,
                  batch_size=1, shuffle=False, num_workers=0):
+        # 初始化评估数据集参数
         super().__init__(batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
         self.clean_image_files = sorted(glob.glob(clean_image_dir + '/*'))
         self.gaussian_noise_level = gaussian_noise_level
         self.downsampling_factor = downsampling_factor
-        self.jpeg_quality = jpeg_quality
-        self.is_gray = is_gray
         self.total_len = len(self.clean_image_files)
 
     def __len__(self):
@@ -201,9 +158,6 @@ class EvalDataset(JittorDataset):  # 继承JittorDataset
             else:
                 gaussian_noise1 = np.zeros((clean_image.height, clean_image.width, 3), dtype=np.float32)
                 gaussian_noise1 += np.random.normal(0.0, sigma, (clean_image.height, clean_image.width, 3)).astype(np.float32)
-
-        # 下采样和JPEG处理（原代码注释保留）
-        # ...
 
         noisy_image1 = np.array(noisy_image1).astype(np.float32)
         clean_image = np.array(clean_image).astype(np.float32)
